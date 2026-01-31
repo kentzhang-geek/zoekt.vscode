@@ -12,10 +12,25 @@
   "activationEvents": [],
   "main": "./dist/extension.js",
   "contributes": {
+    "configuration": {
+      "title": "Zoekt",
+      "properties": {
+        "zoekt.url": {
+          "type": "string",
+          "default": "http://127.0.0.1:6070",
+          "description": "The URL of the zoekt-webserver"
+        },
+        "zoekt.prefix": {
+          "type": "string",
+          "default": "",
+          "description": "Default prefix to add to search queries (e.g. 'r:my-repo')"
+        }
+      }
+    },
     "commands": [
       {
-        "command": "zoekt-vscode.helloWorld",
-        "title": "Hello World"
+        "command": "zoekt-vscode.search",
+        "title": "Zoekt: Search"
       }
     ]
   },
