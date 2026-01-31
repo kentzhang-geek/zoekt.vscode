@@ -6,11 +6,11 @@ export interface SearchOptions {
 
 export interface ZoektSearchResult {
     Result: {
-        FileMatches: FileMatch[];
-        Stats: {
-            MatchCount: number;
-            FileCount: number;
-        };
+        Files: FileMatch[];
+        // Stats fields are flattened into Result
+        MatchCount: number;
+        FileCount: number;
+        [key: string]: any;
     };
 }
 
@@ -56,7 +56,15 @@ export async function searchZoekt(query: string, config: ZoektConfig, options: S
         }
 
         const data = await response.json() as ZoektSearchResult;
-        console.log(`[Zoekt] Received response:`, JSON.stringify(data).substring(0, 200) + '...');
+        // Detailed logging for debugging structure
+        if (data.Result) {
+            console.log(`[Zoekt] Result keys: ${Object.keys(data.Result).join(', ')}`);
+            if (data.Result.Files) {
+                console.log(`[Zoekt] Found ${data.Result.Files.length} files`);
+            } else {
+                console.log(`[Zoekt] 'Files' array not found in Result!`);
+            }
+        }
         return data;
     } catch (error) {
         console.error('[Zoekt] Search exception:', error);
