@@ -21,9 +21,22 @@
           "description": "The URL of the zoekt-webserver"
         },
         "zoekt.prefix": {
-          "type": "string",
-          "default": "",
-          "description": "Default prefix to add to search queries (e.g. 'r:my-repo')"
+          "type": "array",
+          "default": [],
+          "description": "List of search prefixes. Each item should have a 'name' and 'prefix'.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "Display name for the prefix"
+              },
+              "prefix": {
+                "type": "string",
+                "description": "The prefix string (e.g. 'r:my-repo')"
+              }
+            }
+          }
         }
       }
     },
@@ -31,6 +44,10 @@
       {
         "command": "zoekt-vscode.search",
         "title": "Zoekt: Search"
+      },
+      {
+        "command": "zoekt-vscode.selectPrefix",
+        "title": "Zoekt: Switch Prefix"
       }
     ]
   },

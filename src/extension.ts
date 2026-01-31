@@ -12,20 +12,45 @@ export function activate(context: vscode.ExtensionContext) {
 	// Register the document link provider for 'zoekt' scheme to enable file links
 	const linkProviderRegistration = vscode.languages.registerDocumentLinkProvider({ scheme: 'zoekt' }, provider);
 
-	const commandRegistration = vscode.commands.registerCommand('zoekt-vscode.search', async () => {
+	const selectPrefixCommand = vscode.commands.registerCommand('zoekt-vscode.selectPrefix', async () => {
 		const config = getConfig();
+		if (!config.prefixes || config.prefixes.length === 0) {
+			vscode.window.showInformationMessage("No prefixes configured in 'zoekt.prefix'.");
+			return;
+		}
+
+		const items = config.prefixes.map(p => ({ label: p.name, description: p.prefix, prefix: p.prefix }));
+		items.unshift({ label: "None (All)", description: "", prefix: "" });
+
+		const selection = await vscode.window.showQuickPick(items, {
+			placeHolder: 'Select a search scope/prefix'
+		});
+
+		if (selection) {
+			await context.workspaceState.update('zoekt.activePrefix', selection.prefix);
+			await context.workspaceState.update('zoekt.activePrefixName', selection.label);
+			vscode.window.showInformationMessage(`Zoekt Prefix set to: ${selection.label}`);
+		}
+	});
+
+	const searchCommand = vscode.commands.registerCommand('zoekt-vscode.search', async () => {
+		const config = getConfig();
+
+		let prefix = context.workspaceState.get<string>('zoekt.activePrefix', '');
+		let prefixName = context.workspaceState.get<string>('zoekt.activePrefixName', 'None');
 
 		// Show input box
 		const query = await vscode.window.showInputBox({
 			placeHolder: 'Search query (e.g. "foo bar" or "r:repo")',
-			prompt: 'Enter Zoekt search query'
+			title: `Zoekt Search (Prefix: ${prefixName})`,
+			prompt: `Enter query. Current prefix: ${prefix || '(none)'}`
 		});
 
 		if (!query) {
 			return;
 		}
 
-		const fullQuery = config.prefix ? `${config.prefix} ${query}` : query;
+		const fullQuery = prefix ? `${prefix} ${query}` : query;
 
 		try {
 			await vscode.window.withProgress({
@@ -51,7 +76,7 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 	});
 
-	context.subscriptions.push(providerRegistration, linkProviderRegistration, commandRegistration);
+	context.subscriptions.push(providerRegistration, linkProviderRegistration, selectPrefixCommand, searchCommand);
 }
 
 export function deactivate() { }
