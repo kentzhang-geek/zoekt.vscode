@@ -35,8 +35,13 @@ export async function searchZoekt(query: string, config: ZoektConfig, options: S
         Restrict: []
     };
 
+    console.log(`[Zoekt] Searching: ${query} on ${config.url}`);
+
     try {
-        const response = await fetch(`${config.url.replace(/\/$/, '')}/api/search`, {
+        const fetchUrl = `${config.url.replace(/\/$/, '')}/api/search`;
+        console.log(`[Zoekt] Fetching ${fetchUrl} with body:`, JSON.stringify(body));
+
+        const response = await fetch(fetchUrl, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -46,13 +51,15 @@ export async function searchZoekt(query: string, config: ZoektConfig, options: S
         });
 
         if (!response.ok) {
+            console.error(`[Zoekt] API error: ${response.status} ${response.statusText}`);
             throw new Error(`Zoekt API error: ${response.status} ${response.statusText}`);
         }
 
         const data = await response.json() as ZoektSearchResult;
+        console.log(`[Zoekt] Received response:`, JSON.stringify(data).substring(0, 200) + '...');
         return data;
     } catch (error) {
-        console.error('Zoekt search failed:', error);
+        console.error('[Zoekt] Search exception:', error);
         throw error;
     }
 }

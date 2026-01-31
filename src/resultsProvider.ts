@@ -13,6 +13,7 @@ export class ZoektResultProvider implements vscode.TextDocumentContentProvider, 
     private results: SearchResultStorage = {};
 
     public update(uri: vscode.Uri, result: ZoektSearchResult) {
+        console.log(`[Zoekt] Provider updating ${uri.toString()} with ${result.Result.Stats.MatchCount} matches`);
         this.results[uri.toString()] = result;
         this._onDidChange.fire(uri);
     }
