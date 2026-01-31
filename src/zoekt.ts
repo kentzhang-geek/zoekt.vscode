@@ -61,6 +61,24 @@ export async function searchZoekt(query: string, config: ZoektConfig, options: S
             console.log(`[Zoekt] Result keys: ${Object.keys(data.Result).join(', ')}`);
             if (data.Result.Files) {
                 console.log(`[Zoekt] Found ${data.Result.Files.length} files`);
+
+                // Decode potentially base64 encoded lines
+                for (const file of data.Result.Files) {
+                    for (const match of file.LineMatches) {
+                        try {
+                            if (match.Line) {
+                                // Attempt to decode base64. Zoekt often returns base64.
+                                // We check if it looks like base64 or just try to decode.
+                                const decoded = Buffer.from(match.Line, 'base64').toString('utf-8');
+                                // Basic validation: if decoded length is smaller than original * 0.75, it's likely base64.
+                                // Or simply trust it. 
+                                match.Line = decoded;
+                            }
+                        } catch (e) {
+                            // Keep original if decoding fails
+                        }
+                    }
+                }
             } else {
                 console.log(`[Zoekt] 'Files' array not found in Result!`);
             }

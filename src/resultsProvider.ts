@@ -18,13 +18,27 @@ export class ZoektResultProvider implements vscode.TextDocumentContentProvider, 
         this._onDidChange.fire(uri);
     }
 
+    private cleanFilePath(repo: string, fileName: string): string {
+        // Handle case where fileName contains absolute path (Zoekt internal behavior?)
+        // Example: pbrtv3/src/D:\Code\pbrt-v3\src\tests\imageio.cpp
+        // We look for a drive letter pattern or typical absolute path start.
+
+        // Check for Windows drive letter D:\...
+        const winMatch = fileName.match(/[a-zA-Z]:\\[^:]+$/);
+        if (winMatch) {
+            return winMatch[0];
+        }
+
+        // Just regular path
+        return fileName;
+    }
+
     provideTextDocumentContent(uri: vscode.Uri): string {
         const result = this.results[uri.toString()];
         if (!result) {
             return "Searching...";
         }
 
-        // Adapted for flattened structure, using 'Files' key
         if (!result.Result.Files || result.Result.Files.length === 0) {
             return "No matches found.";
         }
@@ -33,7 +47,8 @@ export class ZoektResultProvider implements vscode.TextDocumentContentProvider, 
         content += `Matches found: ${result.Result.MatchCount} in ${result.Result.FileCount} files\n\n`;
 
         for (const file of result.Result.Files) {
-            content += `File: ${file.Repository}/${file.FileName}\n`;
+            const displayPath = this.cleanFilePath(file.Repository, file.FileName);
+            content += `File: ${displayPath}\n`;
             for (const match of file.LineMatches) {
                 // LineNumber
                 content += `  ${match.LineNumber}: ${match.Line}\n`;
@@ -48,7 +63,6 @@ export class ZoektResultProvider implements vscode.TextDocumentContentProvider, 
         const links: vscode.DocumentLink[] = [];
         const result = this.results[document.uri.toString()];
 
-        // Check for Files instead of FileMatches
         if (!result || !result.Result.Files) {
             return links;
         }
@@ -95,9 +109,17 @@ export class ZoektResultProvider implements vscode.TextDocumentContentProvider, 
     }
 
     private resolveFileUri(repo: string, filePath: string, line: number = 1): vscode.Uri | null {
+        const cleanedPath = this.cleanFilePath(repo, filePath);
+
+        // If it looks like an absolute path, use it directly.
+        if (cleanedPath.match(/^[a-zA-Z]:\\/) || cleanedPath.startsWith("/")) {
+            return vscode.Uri.file(cleanedPath).with({ fragment: `L${line}` });
+        }
+
+        // Fallback: search in workspace
         if (vscode.workspace.workspaceFolders) {
             for (const folder of vscode.workspace.workspaceFolders) {
-                const potentialUri = vscode.Uri.joinPath(folder.uri, filePath);
+                const potentialUri = vscode.Uri.joinPath(folder.uri, cleanedPath);
                 return potentialUri.with({ fragment: `L${line}` });
             }
         }
