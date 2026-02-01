@@ -1,19 +1,8 @@
-import { McpServer, ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
-import { searchZoekt } from "./zoekt";
+import { searchZoekt, listRepositories } from "./zoekt";
 import { ZoektConfig } from "./types";
-
-// Global state for persistence
-let currentPrefix = "";
-let currentPrefixName = "None";
-
-// Predefined presets for common searches
-const PRESETS: Record<string, string> = {
-    "cpp": "f:\\.(cpp|c|cc|cxx|h|hpp|hxx)$",
-    "hlsl": "f:\\.hlsl$",
-    "shader": "f:\\.(shader|cg|hlsl|glsl|vsh|fsh)$"
-};
 
 // Create server instance
 const server = new McpServer({
@@ -29,57 +18,60 @@ server.resource(
         contents: [{
             uri: uri.href,
             text: JSON.stringify({
-                currentPrefix,
-                currentPrefixName,
-                availablePresets: Object.keys(PRESETS),
+                status: "running",
                 url: "http://127.0.0.1:6070"
             }, null, 2)
         }]
     })
 );
 
-// Tool to set current prefix
+// Register list repos tool
 server.tool(
-    "set_prefix",
-    "Set the search prefix (scope) for subsequent searches. Can use a preset name.",
+    "list_repos",
+    "List all repositories available on the Zoekt server. Use this to find 'r:repo_name' filters.",
     {
-        prefix: z.string().describe(`The prefix string to use (e.g., 'r:my-repo') OR a preset name (${Object.keys(PRESETS).join(', ')}). Pass empty string to clear.`),
-        name: z.string().optional().describe("A human-readable name for this prefix (e.g., 'My Repo').")
+        url: z.string().optional().describe("Zoekt server URL. Defaults to http://127.0.0.1:6070"),
     },
-    async ({ prefix, name }) => {
-        // Check if prefix is a preset key
-        if (prefix && PRESETS[prefix.toLowerCase()]) {
-            const presetValue = PRESETS[prefix.toLowerCase()];
-            currentPrefix = presetValue;
-            currentPrefixName = name || `Preset: ${prefix}`;
+    async ({ url }) => {
+        const searchUrl = url || "http://127.0.0.1:6070";
+        const config: ZoektConfig = {
+            url: searchUrl,
+            prefixes: []
+        };
+
+        try {
+            const repos = await listRepositories(config);
+            if (repos.length === 0) {
+                return {
+                    content: [{ type: "text", text: "No repositories found." }]
+                };
+            }
             return {
-                content: [{ type: "text", text: `Prefix set to preset '${prefix}': ${currentPrefix}` }]
+                content: [{ type: "text", text: `Available Repositories:\n${repos.join('\n')}` }]
+            };
+        } catch (error: any) {
+            return {
+                content: [{ type: "text", text: `Error listing repos: ${error.message}` }],
+                isError: true,
             };
         }
-
-        currentPrefix = prefix;
-        currentPrefixName = name || (prefix ? prefix : "None");
-        return {
-            content: [{ type: "text", text: `Prefix set to: ${currentPrefixName} (${currentPrefix || "Global"})` }]
-        };
     }
 );
 
 // Register search tool
 server.tool(
     "search",
-    "Search code using Zoekt. STRONGLY PREFER REGEX for vague queries.",
+    "Search code using Zoekt. STRONGLY PREFER REGEX.",
     {
-        query: z.string().describe("The search query. USE REGEX for fuzzy matching! Example: '(init|setup).+context' is better than 'init setup context'. Supports Zoekt syntax (e.g., 'defs:foo', 'r:bar', 'case:yes')."),
-        prefix: z.string().optional().describe("Optional prefix to override the global prefix (e.g., 'r:my-repo')."),
+        query: z.string().describe("The search query. USE REGEX for fuzzy matching! Example: '(init|setup).+context'. To filter by repo, use 'r:repo_name <query>'. Use 'list_repos' to find available repos."),
+        prefix: z.string().optional().describe("Optional prefix to prepend to the query (e.g. 'r:my-repo')."),
         url: z.string().optional().describe("Zoekt server URL. Defaults to http://127.0.0.1:6070"),
     },
     async ({ query, prefix, url }) => {
         const searchUrl = url || "http://127.0.0.1:6070";
 
-        // Use provided prefix, or fallback to global state
-        const effectivePrefix = prefix !== undefined ? prefix : currentPrefix;
-        const fullQuery = effectivePrefix ? `${effectivePrefix} ${query}` : query;
+        // Use provided prefix if any
+        const fullQuery = prefix ? `${prefix} ${query}` : query;
 
         // Construct a minimal config
         const config: ZoektConfig = {

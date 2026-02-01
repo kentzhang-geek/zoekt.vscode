@@ -1,10 +1,10 @@
 import * as vscode from 'vscode';
-import { searchZoekt } from './zoekt';
+import { searchZoekt, listRepositories } from './zoekt';
 import { getConfig } from './config';
 import { ZoektConfig } from './types';
 
 export function registerLmTool(context: vscode.ExtensionContext) {
-    console.log('[Zoekt] Attemping to register LM Tool: zoekt-search');
+    console.log('[Zoekt] Attemping to register LM Tools');
 
     if (!vscode.lm) {
         console.error('[Zoekt] ERROR: vscode.lm is undefined! Your VS Code version might be too old or the API is not available.');
@@ -15,9 +15,51 @@ export function registerLmTool(context: vscode.ExtensionContext) {
     try {
         // @ts-ignore
         context.subscriptions.push(vscode.lm.registerTool('zoekt_search', new ZoektSearchTool()));
-        console.log('[Zoekt] SUCCESS: LM Tool zoekt_search registered!');
+        // @ts-ignore
+        context.subscriptions.push(vscode.lm.registerTool('zoekt_list_repos', new ZoektListReposTool()));
+
+        console.log('[Zoekt] SUCCESS: LM Tools registered!');
     } catch (error: any) {
         console.error(`[Zoekt] FAILED to register tool: ${error.message}`);
+    }
+}
+
+// @ts-ignore
+class ZoektListReposTool {
+    async invoke(toolInvocation: any, token: vscode.CancellationToken): Promise<any> {
+        console.log(`[Zoekt Tool] Listing Repositories...`);
+
+        // Get extension config (url, etc)
+        const extConfig = getConfig();
+        const config: ZoektConfig = {
+            url: extConfig.url,
+            prefixes: []
+        };
+
+        try {
+            const repos = await listRepositories(config);
+
+            if (repos.length === 0) {
+                // @ts-ignore
+                return new vscode.LanguageModelToolResult([
+                    // @ts-ignore
+                    new vscode.LanguageModelTextPart("No repositories found on the Zoekt server.")
+                ]);
+            }
+
+            // @ts-ignore
+            return new vscode.LanguageModelToolResult([
+                // @ts-ignore
+                new vscode.LanguageModelTextPart(`### Available Repositories\n\n${repos.map(r => `- ${r}`).join('\n')}`)
+            ]);
+
+        } catch (err: any) {
+            // @ts-ignore
+            return new vscode.LanguageModelToolResult([
+                // @ts-ignore
+                new vscode.LanguageModelTextPart(`Error listing repos: ${err.message}`)
+            ]);
+        }
     }
 }
 
@@ -45,7 +87,7 @@ class ZoektSearchTool {
                 // @ts-ignore
                 return new vscode.LanguageModelToolResult([
                     // @ts-ignore
-                    new vscode.LanguageModelTextPart(`No results found for query: "${fullQuery}". Try a broader regex or check the prefix.`)
+                    new vscode.LanguageModelTextPart(`No results found for query: "${fullQuery}". Try a broader regex or check the prefix. Use 'zoekt_list_repos' to see valid 'r:repo' filters.`)
                 ]);
             }
 

@@ -61,3 +61,44 @@ export async function searchZoekt(query: string, config: ZoektConfig, options: S
         throw error;
     }
 }
+
+export async function listRepositories(config: ZoektConfig): Promise<string[]> {
+    const fetchUrl = `${config.url.replace(/\/$/, '')}/api/list`;
+    console.log(`[Zoekt] Listing repos from ${fetchUrl}`);
+
+    try {
+        const response = await fetch(fetchUrl, {
+            method: 'POST', // zoekt /api/list usually accepts POST with optional filters, or GET. Let's try simple POST with empty object or simple filters if needed.
+            // Based on generic zoekt, /api/list often takes {q: ...} to filter list.
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({ q: "" }) // List all
+        });
+
+        if (!response.ok) {
+            console.warn(`[Zoekt] List repos failed: ${response.status} ${response.statusText}`);
+            return [];
+        }
+
+        const data = await response.json() as any;
+        // Expected structure from zoekt /api/list: { List: { Repos: [...] } } or just { Repos: [...] } depending on version/client.
+        // Standard Go zoekt returns:
+        // type ListResponse struct { Repos []*RepoListEntry }
+        // type RepoListEntry struct { Repository, IndexMetadata... }
+
+        let repos: any[] = [];
+        if (data.List && data.List.Repos) {
+            repos = data.List.Repos;
+        } else if (data.Repos) {
+            repos = data.Repos;
+        }
+
+        return repos.map((r: any) => r.Repository.Name);
+
+    } catch (error) {
+        console.error('[Zoekt] List repositories exception:', error);
+        return [];
+    }
+}

@@ -69,23 +69,42 @@
         "toolReferenceName": "zoekt",
         "displayName": "Zoekt Code Search",
         "userDescription": "Search for code patterns in the codebase using Zoekt (supports Regex).",
-        "modelDescription": "Search for code patterns in the entire codebase using Zoekt. \n\nIMPORTANT USAGE RULES:\n1. Supports REGEX. Use regex for fuzzy matching logic.\n   - BAD: 'init setup context'\n   - GOOD: '(init|setup).+context'\n2. Use Zoekt syntax for filtering:\n   - 'defs:MyClass' (definitions)\n   - 'r:my-repo' (repo filter)\n   - 'file:\\.cpp$' (file extension)\n3. Returns file paths, line numbers, and snippets.",
+        "modelDescription": "Search for code patterns using Zoekt.\n\nIMPORTANT:\n1. Supports REGEX. Use 'r:repo_name <query>' to search generic repo.\n2. Use 'zoekt_list_repos' to find available repositories.\n3. Returns file paths, line numbers, and snippets.",
         "canBeReferencedInPrompt": true,
         "inputSchema": {
           "type": "object",
           "properties": {
             "query": {
               "type": "string",
-              "description": "The search query. STRONGLY PREFER REGEX (e.g., '(foo|bar).+baz') for multiple terms."
+              "description": "The search query. STRONGLY PREFER REGEX (e.g., '(foo|bar).+baz'). Use 'r:repo_name' to filter."
             },
             "prefix": {
               "type": "string",
-              "description": "Optional search prefix (e.g., 'r:my-repo') to restrict scope."
+              "description": "Optional search prefix (e.g., 'r:my-repo') to restrict scope, or include it in 'query' instead."
             }
           },
           "required": [
             "query"
           ]
+        }
+      },
+      {
+        "name": "zoekt_list_repos",
+        "tags": [
+          "search",
+          "code",
+          "zoekt",
+          "repo"
+        ],
+        "toolReferenceName": "zoekt_repos",
+        "displayName": "Zoekt List Repositories",
+        "userDescription": "List all repositories available on the Zoekt server.",
+        "modelDescription": "List all repositories available on the Zoekt server to help construct correct 'r:repo_name' search filters.",
+        "canBeReferencedInPrompt": true,
+        "inputSchema": {
+          "type": "object",
+          "properties": {},
+          "required": []
         }
       }
     ],
