@@ -76,7 +76,40 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 	});
 
-	context.subscriptions.push(providerRegistration, linkProviderRegistration, selectPrefixCommand, searchCommand);
+	const showMcpConfigCommand = vscode.commands.registerCommand('zoekt-vscode.showMcpConfig', async () => {
+		const extensionPath = context.extensionPath;
+		// Determine path to mcp-server.js based on production/dev mode.
+		// Assuming standard compile puts it in ./dist/mcp-server.js or ./out/mcp-server.js
+		// webpack config usually bundles 'main', we might need to adjust webpack to bundle mcp-server separately or just use tsc output.
+		// For now, let's assume the user compiles with tsc for direct node usage or we bundle it.
+		// If we use webpack, we need a separate entry point.
+
+		// Let's assume it ends up in dist/mcp-server.js if we add it to webpack, or we just rely on the user running it derived from source if in dev.
+		// But for a shipped extension, we need it bundled.
+
+		// Ideally, we point to the absolute path of the file.
+		const mcpScriptPath = vscode.Uri.joinPath(context.extensionUri, 'dist', 'mcp-server.js').fsPath;
+
+		const config = {
+			mcpServers: {
+				"zoekt-vscode": {
+					"command": "node",
+					"args": [mcpScriptPath],
+					"env": {
+					}
+				}
+			}
+		};
+
+		const doc = await vscode.workspace.openTextDocument({
+			content: JSON.stringify(config, null, 2),
+			language: 'json'
+		});
+		await vscode.window.showTextDocument(doc);
+		vscode.window.showInformationMessage('Copy this config to your MCP client (e.g. Claude Desktop config).');
+	});
+
+	context.subscriptions.push(providerRegistration, linkProviderRegistration, selectPrefixCommand, searchCommand, showMcpConfigCommand);
 }
 
 export function deactivate() { }

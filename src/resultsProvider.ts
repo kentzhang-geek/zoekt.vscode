@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { FileMatch, ZoektSearchResult } from './zoekt';
+import { ZoektSearchResult, FileMatch } from './types';
 
 interface SearchResultStorage {
     [uri: string]: ZoektSearchResult;

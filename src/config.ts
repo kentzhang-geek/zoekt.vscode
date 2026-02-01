@@ -1,14 +1,5 @@
 import * as vscode from 'vscode';
-
-export interface PrefixItem {
-    name: string;
-    prefix: string;
-}
-
-export interface ZoektConfig {
-    url: string;
-    prefixes: PrefixItem[];
-}
+import { ZoektConfig, PrefixItem } from './types';
 
 export function getConfig(): ZoektConfig {
     const config = vscode.workspace.getConfiguration('zoekt');

@@ -1,32 +1,4 @@
-import { ZoektConfig } from './config';
-
-export interface SearchOptions {
-    num?: number;
-}
-
-export interface ZoektSearchResult {
-    Result: {
-        Files: FileMatch[];
-        // Stats fields are flattened into Result
-        MatchCount: number;
-        FileCount: number;
-        [key: string]: any;
-    };
-}
-
-export interface FileMatch {
-    FileName: string;
-    Repository: string;
-    LineMatches: LineMatch[];
-}
-
-export interface LineMatch {
-    Line: string;
-    LineNumber: number;
-    Before?: string;
-    After?: string;
-    FileName?: boolean;
-}
+import { ZoektConfig, SearchOptions, ZoektSearchResult, FileMatch, LineMatch } from './types';
 
 export async function searchZoekt(query: string, config: ZoektConfig, options: SearchOptions = {}): Promise<ZoektSearchResult> {
     const body = {
