@@ -9,7 +9,10 @@
   "categories": [
     "Other"
   ],
-  "activationEvents": [],
+  "activationEvents": [
+    "onLanguageModelTool:zoekt-search",
+    "onChatParticipant:zoekt-vscode.zoekt-participant"
+  ],
   "main": "./dist/extension.js",
   "contributes": {
     "configuration": {
@@ -81,6 +84,14 @@
             "query"
           ]
         }
+      }
+    ],
+    "chatParticipants": [
+      {
+        "id": "zoekt-vscode.zoekt-participant",
+        "name": "zoekt",
+        "description": "Search code using Zoekt",
+        "isSticky": true
       }
     ]
   },

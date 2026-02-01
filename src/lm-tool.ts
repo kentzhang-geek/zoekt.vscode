@@ -25,7 +25,7 @@ class ZoektSearchTool {
         };
 
         const fullQuery = prefix ? `${prefix} ${query}` : query;
-        console.log(`[Zoekt LM] Searching: ${fullQuery}`);
+        console.log(`[Zoekt Tool] Executing Search: "${fullQuery}"`);
 
         try {
             const results = await searchZoekt(fullQuery, config);

@@ -3,10 +3,14 @@ import { getConfig } from './config';
 import { searchZoekt } from './zoekt';
 import { ZoektResultProvider } from './resultsProvider';
 import { registerLmTool } from './lm-tool';
+import { registerChatParticipant } from './participant';
 
 export function activate(context: vscode.ExtensionContext) {
 	// Register LM Tool
 	registerLmTool(context);
+
+	// Register Chat Participant
+	registerChatParticipant(context);
 
 	const provider = new ZoektResultProvider();
 
