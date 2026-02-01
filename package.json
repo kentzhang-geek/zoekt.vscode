@@ -53,6 +53,35 @@
         "command": "zoekt-vscode.showMcpConfig",
         "title": "Zoekt: Show MCP Config"
       }
+    ],
+    "languageModelTools": [
+      {
+        "name": "zoekt-search",
+        "tags": [
+          "search",
+          "code",
+          "zoekt"
+        ],
+        "toolReferenceName": "zoekt",
+        "displayName": "Zoekt Code Search",
+        "modelDescription": "Search for code patterns in the entire codebase using Zoekt. \n\nIMPORTANT USAGE RULES:\n1. Supports REGEX. Use regex for fuzzy matching logic.\n   - BAD: 'init setup context'\n   - GOOD: '(init|setup).+context'\n2. Use Zoekt syntax for filtering:\n   - 'defs:MyClass' (definitions)\n   - 'r:my-repo' (repo filter)\n   - 'file:\\.cpp$' (file extension)\n3. Returns file paths, line numbers, and snippets.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string",
+              "description": "The search query. STRONGLY PREFER REGEX (e.g., '(foo|bar).+baz') for multiple terms."
+            },
+            "prefix": {
+              "type": "string",
+              "description": "Optional search prefix (e.g., 'r:my-repo') to restrict scope."
+            }
+          },
+          "required": [
+            "query"
+          ]
+        }
+      }
     ]
   },
   "scripts": {

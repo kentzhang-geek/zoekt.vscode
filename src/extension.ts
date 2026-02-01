@@ -2,8 +2,12 @@ import * as vscode from 'vscode';
 import { getConfig } from './config';
 import { searchZoekt } from './zoekt';
 import { ZoektResultProvider } from './resultsProvider';
+import { registerLmTool } from './lm-tool';
 
 export function activate(context: vscode.ExtensionContext) {
+	// Register LM Tool
+	registerLmTool(context);
+
 	const provider = new ZoektResultProvider();
 
 	// Register the content provider for 'zoekt' scheme
