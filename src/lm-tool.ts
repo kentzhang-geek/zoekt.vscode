@@ -4,10 +4,21 @@ import { getConfig } from './config';
 import { ZoektConfig } from './types';
 
 export function registerLmTool(context: vscode.ExtensionContext) {
-    context.subscriptions.push(
+    console.log('[Zoekt] Attemping to register LM Tool: zoekt-search');
+
+    if (!vscode.lm) {
+        console.error('[Zoekt] ERROR: vscode.lm is undefined! Your VS Code version might be too old or the API is not available.');
+        vscode.window.showErrorMessage('Zoekt Error: vscode.lm is not available. Please update VS Code.');
+        return;
+    }
+
+    try {
         // @ts-ignore
-        vscode.lm.registerTool('zoekt-search', new ZoektSearchTool())
-    );
+        context.subscriptions.push(vscode.lm.registerTool('zoekt-search', new ZoektSearchTool()));
+        console.log('[Zoekt] SUCCESS: LM Tool zoekt-search registered!');
+    } catch (error: any) {
+        console.error(`[Zoekt] FAILED to register tool: ${error.message}`);
+    }
 }
 
 // @ts-ignore

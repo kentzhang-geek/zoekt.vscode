@@ -6,6 +6,8 @@ import { registerLmTool } from './lm-tool';
 import { registerChatParticipant } from './participant';
 
 export function activate(context: vscode.ExtensionContext) {
+	console.log('[Zoekt] Extension Activating...');
+	vscode.window.showInformationMessage('Zoekt Extension has activated!');
 	// Register LM Tool
 	registerLmTool(context);
 

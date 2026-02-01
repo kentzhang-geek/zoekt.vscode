@@ -4,12 +4,13 @@
   "description": "A extension to connect zoekt webserver in vscode, for faster code search and jump",
   "version": "0.0.1",
   "engines": {
-    "vscode": "^1.108.1"
+    "vscode": "^1.93.0"
   },
   "categories": [
     "Other"
   ],
   "activationEvents": [
+    "onStartupFinished",
     "onLanguageModelTool:zoekt-search",
     "onChatParticipant:zoekt-vscode.zoekt-participant"
   ],
@@ -67,7 +68,9 @@
         ],
         "toolReferenceName": "zoekt",
         "displayName": "Zoekt Code Search",
+        "userDescription": "Search for code patterns in the codebase using Zoekt (supports Regex).",
         "modelDescription": "Search for code patterns in the entire codebase using Zoekt. \n\nIMPORTANT USAGE RULES:\n1. Supports REGEX. Use regex for fuzzy matching logic.\n   - BAD: 'init setup context'\n   - GOOD: '(init|setup).+context'\n2. Use Zoekt syntax for filtering:\n   - 'defs:MyClass' (definitions)\n   - 'r:my-repo' (repo filter)\n   - 'file:\\.cpp$' (file extension)\n3. Returns file paths, line numbers, and snippets.",
+        "canBeReferencedInPrompt": true,
         "inputSchema": {
           "type": "object",
           "properties": {
