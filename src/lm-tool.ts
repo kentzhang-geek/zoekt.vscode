@@ -14,8 +14,8 @@ export function registerLmTool(context: vscode.ExtensionContext) {
 
     try {
         // @ts-ignore
-        context.subscriptions.push(vscode.lm.registerTool('zoekt-search', new ZoektSearchTool()));
-        console.log('[Zoekt] SUCCESS: LM Tool zoekt-search registered!');
+        context.subscriptions.push(vscode.lm.registerTool('zoekt_search', new ZoektSearchTool()));
+        console.log('[Zoekt] SUCCESS: LM Tool zoekt_search registered!');
     } catch (error: any) {
         console.error(`[Zoekt] FAILED to register tool: ${error.message}`);
     }

@@ -11,7 +11,7 @@
   ],
   "activationEvents": [
     "onStartupFinished",
-    "onLanguageModelTool:zoekt-search",
+    "onLanguageModelTool:zoekt_search",
     "onChatParticipant:zoekt-vscode.zoekt-participant"
   ],
   "main": "./dist/extension.js",
@@ -60,7 +60,7 @@
     ],
     "languageModelTools": [
       {
-        "name": "zoekt-search",
+        "name": "zoekt_search",
         "tags": [
           "search",
           "code",
