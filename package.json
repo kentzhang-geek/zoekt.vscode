@@ -2,9 +2,9 @@
   "name": "zoekt-vscode",
   "displayName": "zoekt.vscode",
   "description": "A extension to connect zoekt webserver in vscode, for faster code search and jump",
-  "version": "0.0.1",
+  "version": "0.2.0",
   "engines": {
-    "vscode": "^1.93.0"
+    "vscode": "^1.108.0"
   },
   "categories": [
     "Other"
