@@ -7,11 +7,11 @@ export async function searchZoekt(query: string, config: ZoektConfig, options: S
         Restrict: []
     };
 
-    console.log(`[Zoekt] Searching: ${query} on ${config.url}`);
+    console.error(`[Zoekt] Searching: ${query} on ${config.url}`);
 
     try {
         const fetchUrl = `${config.url.replace(/\/$/, '')}/api/search`;
-        console.log(`[Zoekt] Fetching ${fetchUrl} with body:`, JSON.stringify(body));
+        console.error(`[Zoekt] Fetching ${fetchUrl} with body:`, JSON.stringify(body));
 
         const response = await fetch(fetchUrl, {
             method: 'POST',
@@ -30,9 +30,9 @@ export async function searchZoekt(query: string, config: ZoektConfig, options: S
         const data = await response.json() as ZoektSearchResult;
         // Detailed logging for debugging structure
         if (data.Result) {
-            console.log(`[Zoekt] Result keys: ${Object.keys(data.Result).join(', ')}`);
+            console.error(`[Zoekt] Result keys: ${Object.keys(data.Result).join(', ')}`);
             if (data.Result.Files) {
-                console.log(`[Zoekt] Found ${data.Result.Files.length} files`);
+                console.error(`[Zoekt] Found ${data.Result.Files.length} files`);
 
                 // Decode potentially base64 encoded lines
                 for (const file of data.Result.Files) {
@@ -52,7 +52,7 @@ export async function searchZoekt(query: string, config: ZoektConfig, options: S
                     }
                 }
             } else {
-                console.log(`[Zoekt] 'Files' array not found in Result!`);
+                console.error(`[Zoekt] 'Files' array not found in Result!`);
             }
         }
         return data;
@@ -64,7 +64,7 @@ export async function searchZoekt(query: string, config: ZoektConfig, options: S
 
 export async function listRepositories(config: ZoektConfig): Promise<string[]> {
     const fetchUrl = `${config.url.replace(/\/$/, '')}/api/list`;
-    console.log(`[Zoekt] Listing repos from ${fetchUrl}`);
+    console.error(`[Zoekt] Listing repos from ${fetchUrl}`);
 
     try {
         const response = await fetch(fetchUrl, {
