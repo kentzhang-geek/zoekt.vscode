@@ -78,6 +78,16 @@
         "icon": "$(clear-all)"
       },
       {
+        "command": "zoekt-vscode.refreshSearch",
+        "title": "Zoekt: Refresh Search",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "zoekt-vscode.deleteSearch",
+        "title": "Zoekt: Close Search Result",
+        "icon": "$(close)"
+      },
+      {
         "command": "zoekt-vscode.openResult",
         "title": "Zoekt: Open Result"
       }
@@ -120,6 +130,28 @@
           "command": "zoekt-vscode.clearResults",
           "when": "view == zoektResults",
           "group": "navigation@4"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "zoekt-vscode.refreshSearch",
+          "when": "view == zoektResults && viewItem == zoektSearch",
+          "group": "inline@1"
+        },
+        {
+          "command": "zoekt-vscode.deleteSearch",
+          "when": "view == zoektResults && viewItem == zoektSearch",
+          "group": "inline@2"
+        },
+        {
+          "command": "zoekt-vscode.refreshSearch",
+          "when": "view == zoektResults && viewItem == zoektSearch",
+          "group": "1_actions@1"
+        },
+        {
+          "command": "zoekt-vscode.deleteSearch",
+          "when": "view == zoektResults && viewItem == zoektSearch",
+          "group": "1_actions@2"
         }
       ]
     }

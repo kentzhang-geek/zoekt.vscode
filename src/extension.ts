@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { getConfig } from './config';
 import { listRepositories, searchZoekt } from './zoekt';
-import { OpenResultArgs, ZoektResultTreeProvider } from './resultsTreeProvider';
+import { OpenResultArgs, SearchNode, ZoektResultTreeProvider } from './resultsTreeProvider';
 
 const STATE_PREFIX = 'zoekt.activePrefix';
 const STATE_PREFIX_NAME = 'zoekt.activePrefixName';
@@ -149,7 +149,7 @@ export function activate(context: vscode.ExtensionContext): void {
 				},
 				async () => {
 					const result = await searchZoekt(fullQuery, config);
-					treeProvider.setResults(fullQuery, result);
+					treeProvider.addOrMoveToTop(fullQuery, result);
 					treeView.message = treeProvider.getSummaryMessage();
 					await vscode.commands.executeCommand('zoektResults.focus');
 				}
@@ -163,6 +163,38 @@ export function activate(context: vscode.ExtensionContext): void {
 	const clearResultsCommand = vscode.commands.registerCommand('zoekt-vscode.clearResults', () => {
 		treeProvider.clear();
 		treeView.message = undefined;
+	});
+
+	const refreshSearchCommand = vscode.commands.registerCommand('zoekt-vscode.refreshSearch', async (node?: SearchNode) => {
+		if (!node || node.kind !== 'search') {
+			return;
+		}
+		const config = getConfig();
+		try {
+			await vscode.window.withProgress(
+				{
+					location: vscode.ProgressLocation.Notification,
+					title: `Zoekt: Refreshing "${node.fullQuery}"...`,
+					cancellable: false
+				},
+				async () => {
+					const result = await searchZoekt(node.fullQuery, config);
+					treeProvider.refreshNode(node.id, result);
+					treeView.message = treeProvider.getSummaryMessage();
+				}
+			);
+		} catch (error) {
+			const msg = error instanceof Error ? error.message : String(error);
+			vscode.window.showErrorMessage(`Zoekt refresh failed: ${msg}`);
+		}
+	});
+
+	const deleteSearchCommand = vscode.commands.registerCommand('zoekt-vscode.deleteSearch', (node?: SearchNode) => {
+		if (!node || node.kind !== 'search') {
+			return;
+		}
+		treeProvider.deleteNode(node.id);
+		treeView.message = treeProvider.getSummaryMessage();
 	});
 
 	const openResultCommand = vscode.commands.registerCommand('zoekt-vscode.openResult', async (args: OpenResultArgs) => {
@@ -189,6 +221,8 @@ export function activate(context: vscode.ExtensionContext): void {
 		selectRepoCommand,
 		searchCommand,
 		clearResultsCommand,
+		refreshSearchCommand,
+		deleteSearchCommand,
 		openResultCommand
 	);
 }
