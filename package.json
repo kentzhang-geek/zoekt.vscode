@@ -2,7 +2,7 @@
   "name": "zoekt-vscode",
   "displayName": "zoekt.vscode",
   "description": "A extension to connect zoekt webserver in vscode, for faster code search and jump",
-  "version": "0.2.3",
+  "version": "0.3.0",
   "engines": {
     "vscode": "^1.104.0"
   },
@@ -10,9 +10,7 @@
     "Other"
   ],
   "activationEvents": [
-    "onStartupFinished",
-    "onLanguageModelTool:zoekt_search",
-    "onChatParticipant:zoekt-vscode.zoekt-participant"
+    "onStartupFinished"
   ],
   "main": "./dist/extension.js",
   "contributes": {
@@ -41,81 +39,90 @@
               }
             }
           }
+        },
+        "zoekt.maxResults": {
+          "type": "number",
+          "default": 50,
+          "minimum": 1,
+          "maximum": 2000,
+          "description": "Maximum number of matched files to display (MaxDocDisplayCount)"
+        },
+        "zoekt.contextLines": {
+          "type": "number",
+          "default": 2,
+          "minimum": 0,
+          "maximum": 10,
+          "description": "Number of context lines before and after each match (NumContextLines)"
         }
       }
     },
     "commands": [
       {
         "command": "zoekt-vscode.search",
-        "title": "Zoekt: Search"
+        "title": "Zoekt: Search",
+        "icon": "$(search)"
       },
       {
         "command": "zoekt-vscode.selectPrefix",
-        "title": "Zoekt: Switch Prefix"
+        "title": "Zoekt: Switch Prefix",
+        "icon": "$(filter)"
       },
       {
-        "command": "zoekt-vscode.showMcpConfig",
-        "title": "Zoekt: Show MCP Config"
-      }
-    ],
-    "languageModelTools": [
-      {
-        "name": "zoekt_search",
-        "tags": [
-          "search",
-          "code",
-          "zoekt"
-        ],
-        "toolReferenceName": "zoekt",
-        "displayName": "Zoekt Code Search",
-        "userDescription": "Search for code patterns in the codebase using Zoekt (supports Regex).",
-        "modelDescription": "Search for code patterns using Zoekt.\n\nIMPORTANT:\n1. Supports REGEX. Use 'r:repo_name <query>' to search generic repo.\n2. Use 'zoekt_list_repos' to find available repositories.\n3. Returns file paths, line numbers, and snippets.",
-        "canBeReferencedInPrompt": true,
-        "inputSchema": {
-          "type": "object",
-          "properties": {
-            "query": {
-              "type": "string",
-              "description": "The search query. STRONGLY PREFER REGEX (e.g., '(foo|bar).+baz'). Use 'r:repo_name' to filter."
-            },
-            "prefix": {
-              "type": "string",
-              "description": "Optional search prefix (e.g., 'r:my-repo') to restrict scope, or include it in 'query' instead."
-            }
-          },
-          "required": [
-            "query"
-          ]
-        }
+        "command": "zoekt-vscode.selectRepo",
+        "title": "Zoekt: Select Repository",
+        "icon": "$(repo)"
       },
       {
-        "name": "zoekt_list_repos",
-        "tags": [
-          "search",
-          "code",
-          "zoekt",
-          "repo"
-        ],
-        "toolReferenceName": "zoekt_repos",
-        "displayName": "Zoekt List Repositories",
-        "userDescription": "List all repositories available on the Zoekt server.",
-        "modelDescription": "List all repositories available on the Zoekt server to help construct correct 'r:repo_name' search filters.",
-        "canBeReferencedInPrompt": true,
-        "inputSchema": {
-          "type": "object",
-          "properties": {},
-          "required": []
-        }
+        "command": "zoekt-vscode.clearResults",
+        "title": "Zoekt: Clear Results",
+        "icon": "$(clear-all)"
+      },
+      {
+        "command": "zoekt-vscode.openResult",
+        "title": "Zoekt: Open Result"
       }
     ],
-    "chatParticipants": [
-      {
-        "id": "zoekt-vscode.zoekt-participant",
-        "name": "zoekt",
-        "description": "Search code using Zoekt",
-        "isSticky": true
-      }
-    ]
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "zoekt",
+          "title": "Zoekt Search",
+          "icon": "$(search)"
+        }
+      ]
+    },
+    "views": {
+      "zoekt": [
+        {
+          "id": "zoektResults",
+          "name": "Search Results"
+        }
+      ]
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "zoekt-vscode.search",
+          "when": "view == zoektResults",
+          "group": "navigation@1"
+        },
+        {
+          "command": "zoekt-vscode.selectRepo",
+          "when": "view == zoektResults",
+          "group": "navigation@2"
+        },
+        {
+          "command": "zoekt-vscode.selectPrefix",
+          "when": "view == zoektResults",
+          "group": "navigation@3"
+        },
+        {
+          "command": "zoekt-vscode.clearResults",
+          "when": "view == zoektResults",
+          "group": "navigation@4"
+        }
+      ]
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run package",
@@ -140,9 +147,5 @@
     "typescript-eslint": "^8.52.0",
     "webpack": "^5.104.1",
     "webpack-cli": "^6.0.1"
-  },
-  "dependencies": {
-    "zod": "^3.24.1",
-    "@modelcontextprotocol/sdk": "^1.25.3"
   }
 }

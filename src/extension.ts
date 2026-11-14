@@ -1,25 +1,58 @@
 import * as vscode from 'vscode';
 import { getConfig } from './config';
-import { searchZoekt } from './zoekt';
-import { ZoektResultProvider } from './resultsProvider';
-import { registerLmTool } from './lm-tool';
-import { registerChatParticipant } from './participant';
+import { listRepositories, searchZoekt } from './zoekt';
+import { OpenResultArgs, ZoektResultTreeProvider } from './resultsTreeProvider';
 
-export function activate(context: vscode.ExtensionContext) {
-	console.log('[Zoekt] Extension Activating...');
-	// Register LM Tool
-	registerLmTool(context);
+const STATE_PREFIX = 'zoekt.activePrefix';
+const STATE_PREFIX_NAME = 'zoekt.activePrefixName';
+const STATE_REPO = 'zoekt.activeRepo';
+const STATE_LAST_QUERY = 'zoekt.lastQuery';
 
-	// Register Chat Participant
-	registerChatParticipant(context);
+/**
+ * @brief Escapes special regular expression characters for exact Zoekt repo filter matching.
+ * @param value Raw repository name.
+ * @return Regex-escaped repository name.
+ */
+function escapeRegex(value: string): string {
+	return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
 
-	const provider = new ZoektResultProvider();
+/**
+ * @brief Updates the status bar item to reflect the active prefix and repository scope.
+ * @param statusBar Target VS Code status bar item.
+ * @param context Extension context holding workspace state.
+ */
+function updateStatusBar(statusBar: vscode.StatusBarItem, context: vscode.ExtensionContext): void {
+	const prefixName = context.workspaceState.get<string>(STATE_PREFIX_NAME, '');
+	const activeRepo = context.workspaceState.get<string>(STATE_REPO, '');
 
-	// Register the content provider for 'zoekt' scheme
-	const providerRegistration = vscode.workspace.registerTextDocumentContentProvider('zoekt', provider);
+	const scopes: string[] = [];
+	if (activeRepo) {
+		scopes.push(activeRepo);
+	}
+	if (prefixName && prefixName !== 'None (All)') {
+		scopes.push(prefixName);
+	}
 
-	// Register the document link provider for 'zoekt' scheme to enable file links
-	const linkProviderRegistration = vscode.languages.registerDocumentLinkProvider({ scheme: 'zoekt' }, provider);
+	statusBar.text = scopes.length > 0 ? `$(search) Zoekt: ${scopes.join(' | ')}` : '$(search) Zoekt';
+	statusBar.tooltip = 'Click to run Zoekt Search';
+}
+
+/**
+ * @brief Activates the Zoekt VS Code extension for human code search.
+ * @param context VS Code extension context for registering disposables and state.
+ */
+export function activate(context: vscode.ExtensionContext): void {
+	const treeProvider = new ZoektResultTreeProvider();
+	const treeView = vscode.window.createTreeView('zoektResults', {
+		treeDataProvider: treeProvider,
+		showCollapseAll: true
+	});
+
+	const statusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
+	statusBar.command = 'zoekt-vscode.search';
+	updateStatusBar(statusBar, context);
+	statusBar.show();
 
 	const selectPrefixCommand = vscode.commands.registerCommand('zoekt-vscode.selectPrefix', async () => {
 		const config = getConfig();
@@ -28,97 +61,141 @@ export function activate(context: vscode.ExtensionContext) {
 			return;
 		}
 
-		const items = config.prefixes.map(p => ({ label: p.name, description: p.prefix, prefix: p.prefix }));
-		items.unshift({ label: "None (All)", description: "", prefix: "" });
+		const items = config.prefixes.map(p => ({
+			label: p.name,
+			description: p.prefix,
+			prefix: p.prefix
+		}));
+		items.unshift({ label: 'None (All)', description: '', prefix: '' });
 
 		const selection = await vscode.window.showQuickPick(items, {
 			placeHolder: 'Select a search scope/prefix'
 		});
 
 		if (selection) {
-			await context.workspaceState.update('zoekt.activePrefix', selection.prefix);
-			await context.workspaceState.update('zoekt.activePrefixName', selection.label);
-			vscode.window.showInformationMessage(`Zoekt Prefix set to: ${selection.label}`);
+			await context.workspaceState.update(STATE_PREFIX, selection.prefix);
+			await context.workspaceState.update(STATE_PREFIX_NAME, selection.label);
+			updateStatusBar(statusBar, context);
+		}
+	});
+
+	const selectRepoCommand = vscode.commands.registerCommand('zoekt-vscode.selectRepo', async () => {
+		const config = getConfig();
+		try {
+			const repos = await vscode.window.withProgress(
+				{
+					location: vscode.ProgressLocation.Notification,
+					title: 'Fetching Zoekt repositories...',
+					cancellable: false
+				},
+				() => listRepositories(config)
+			);
+
+			const items = [
+				{ label: 'All Repositories', description: 'Clear repository filter', repo: '' },
+				...repos.map(repo => ({ label: repo, description: `r:^${escapeRegex(repo)}$`, repo }))
+			];
+
+			const selection = await vscode.window.showQuickPick(items, {
+				placeHolder: 'Select a Zoekt repository filter'
+			});
+
+			if (selection) {
+				await context.workspaceState.update(STATE_REPO, selection.repo);
+				updateStatusBar(statusBar, context);
+			}
+		} catch (error) {
+			const msg = error instanceof Error ? error.message : String(error);
+			vscode.window.showErrorMessage(`Failed to list Zoekt repositories: ${msg}`);
 		}
 	});
 
 	const searchCommand = vscode.commands.registerCommand('zoekt-vscode.search', async () => {
 		const config = getConfig();
+		const prefix = context.workspaceState.get<string>(STATE_PREFIX, '');
+		const activeRepo = context.workspaceState.get<string>(STATE_REPO, '');
+		const lastQuery = context.workspaceState.get<string>(STATE_LAST_QUERY, '');
 
-		let prefix = context.workspaceState.get<string>('zoekt.activePrefix', '');
-		let prefixName = context.workspaceState.get<string>('zoekt.activePrefixName', 'None');
+		const scopeParts: string[] = [];
+		if (activeRepo) {
+			scopeParts.push(`r:^${escapeRegex(activeRepo)}$`);
+		}
+		if (prefix) {
+			scopeParts.push(prefix);
+		}
+		const scopeText = scopeParts.join(' ');
 
-		// Show input box
 		const query = await vscode.window.showInputBox({
-			placeHolder: 'Search query (e.g. "foo bar" or "r:repo")',
-			title: `Zoekt Search (Prefix: ${prefixName})`,
-			prompt: `Enter query. Current prefix: ${prefix || '(none)'}`
+			value: lastQuery,
+			valueSelection: lastQuery ? [0, lastQuery.length] : undefined,
+			placeHolder: 'Search query (e.g. "foo bar" or "file:\\.ts$ func")',
+			title: 'Zoekt Search',
+			prompt: scopeText ? `Active scope: ${scopeText}` : 'Enter Zoekt query (no active scope)'
 		});
 
 		if (!query) {
 			return;
 		}
 
-		const fullQuery = prefix ? `${prefix} ${query}` : query;
+		await context.workspaceState.update(STATE_LAST_QUERY, query);
+		const fullQuery = scopeText ? `${scopeText} ${query}` : query;
 
 		try {
-			await vscode.window.withProgress({
-				location: vscode.ProgressLocation.Notification,
-				title: `Searching for "${fullQuery}"...`,
-				cancellable: false
-			}, async () => {
-				const results = await searchZoekt(fullQuery, config);
-
-				// Create a unique URI for this search
-				const timestamp = new Date().getTime();
-				const uri = vscode.Uri.parse(`zoekt:Search: ${query}?id=${timestamp}`);
-
-				// Update the provider with results
-				provider.update(uri, results);
-
-				// Open the document
-				const doc = await vscode.workspace.openTextDocument(uri);
-				await vscode.window.showTextDocument(doc, { preview: false });
-			});
-		} catch (error: any) {
-			vscode.window.showErrorMessage(`Zoekt search failed: ${error.message}`);
+			await vscode.window.withProgress(
+				{
+					location: vscode.ProgressLocation.Notification,
+					title: `Zoekt: Searching "${fullQuery}"...`,
+					cancellable: false
+				},
+				async () => {
+					const result = await searchZoekt(fullQuery, config);
+					treeProvider.setResults(fullQuery, result);
+					treeView.message = treeProvider.getSummaryMessage();
+					await vscode.commands.executeCommand('zoektResults.focus');
+				}
+			);
+		} catch (error) {
+			const msg = error instanceof Error ? error.message : String(error);
+			vscode.window.showErrorMessage(`Zoekt search failed: ${msg}`);
 		}
 	});
 
-	const showMcpConfigCommand = vscode.commands.registerCommand('zoekt-vscode.showMcpConfig', async () => {
-		const extensionPath = context.extensionPath;
-		// Determine path to mcp-server.js based on production/dev mode.
-		// Assuming standard compile puts it in ./dist/mcp-server.js or ./out/mcp-server.js
-		// webpack config usually bundles 'main', we might need to adjust webpack to bundle mcp-server separately or just use tsc output.
-		// For now, let's assume the user compiles with tsc for direct node usage or we bundle it.
-		// If we use webpack, we need a separate entry point.
-
-		// Let's assume it ends up in dist/mcp-server.js if we add it to webpack, or we just rely on the user running it derived from source if in dev.
-		// But for a shipped extension, we need it bundled.
-
-		// Ideally, we point to the absolute path of the file.
-		const mcpScriptPath = vscode.Uri.joinPath(context.extensionUri, 'dist', 'mcp-server.js').fsPath;
-
-		const config = {
-			mcpServers: {
-				"zoekt-vscode": {
-					"command": "node",
-					"args": [mcpScriptPath],
-					"env": {
-					}
-				}
-			}
-		};
-
-		const doc = await vscode.workspace.openTextDocument({
-			content: JSON.stringify(config, null, 2),
-			language: 'json'
-		});
-		await vscode.window.showTextDocument(doc);
-		vscode.window.showInformationMessage('Copy this config to your MCP client (e.g. Claude Desktop config).');
+	const clearResultsCommand = vscode.commands.registerCommand('zoekt-vscode.clearResults', () => {
+		treeProvider.clear();
+		treeView.message = undefined;
 	});
 
-	context.subscriptions.push(providerRegistration, linkProviderRegistration, selectPrefixCommand, searchCommand, showMcpConfigCommand);
+	const openResultCommand = vscode.commands.registerCommand('zoekt-vscode.openResult', async (args: OpenResultArgs) => {
+		if (!args?.uri) {
+			return;
+		}
+		const lineIndex = Math.max(0, (args.lineNumber ?? 1) - 1);
+		const startCol = Math.max(0, args.startChar ?? 0);
+		const endCol = Math.max(startCol, args.endChar ?? startCol);
+		const selection = new vscode.Range(lineIndex, startCol, lineIndex, endCol);
+
+		const doc = await vscode.workspace.openTextDocument(args.uri);
+		const editor = await vscode.window.showTextDocument(doc, {
+			preserveFocus: false,
+			selection
+		});
+		editor.revealRange(selection, vscode.TextEditorRevealType.InCenter);
+	});
+
+	context.subscriptions.push(
+		treeView,
+		statusBar,
+		selectPrefixCommand,
+		selectRepoCommand,
+		searchCommand,
+		clearResultsCommand,
+		openResultCommand
+	);
 }
 
-export function deactivate() { }
+/**
+ * @brief Deactivates the Zoekt VS Code extension.
+ */
+export function deactivate(): void {
+	// No explicit teardown required; disposables are registered on context.subscriptions.
+}
